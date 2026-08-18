@@ -1,0 +1,177 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum InventoryType {
+  DIGITAL
+  PHYSICAL
+}
+
+enum ProductType {
+  SALE
+  RENT
+  BOTH
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum RentalStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  name            String
+  avatar          String?
+  institution     String?
+  department      String?
+  rating          Float          @default(5.0)
+  completedDeals  Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  products        Product[]
+  orders          Order[]        @relation("BuyerOrders")
+  rentals         Rental[]       @relation("RenterRentals")
+  sentMessages    Message[]
+  reviewsAuthored Review[]
+}
+
+model Product {
+  id                    String        @id @default(uuid())
+  title                 String
+  description           String
+  category              String
+  subcategory           String?
+  inventoryType         InventoryType @default(DIGITAL)
+  type                  ProductType   @default(SALE)
+  priceSalePaise        Int?
+  priceRentPaise        Int?
+  securityDepositPaise  Int?
+  image                 String?
+  status                String        @default("Available")
+  rating                Float         @default(5.0)
+  reviewCount           Int           @default(0)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  sellerId              String
+  seller                User          @relation(fields: [sellerId], references: [id])
+
+  orders                Order[]
+  rentals               Rental[]
+  reviews               Review[]
+  conversations         Conversation[]
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  user1Id   String
+  user2Id   String
+  productId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product?  @relation(fields: [productId], references: [id])
+  messages  Message[]
+
+  @@unique([user1Id, user2Id, productId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id])
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  buyerId     String
+  productId   String
+  amountPaise Int
+  status      OrderStatus @default(COMPLETED)
+  createdAt   DateTime    @default(now())
+
+  buyer       User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
+  payments    Payment[]
+  reviews     Review[]
+}
+
+model Rental {
+  id                   String       @id @default(uuid())
+  renterId             String
+  productId            String
+  startDate            DateTime
+  endDate              DateTime
+  dailyRatePaise       Int
+  totalPaidPaise       Int
+  securityDepositPaise Int?
+  status               RentalStatus @default(ACTIVE)
+  createdAt            DateTime     @default(now())
+
+  renter               User         @relation("RenterRentals", fields: [renterId], references: [id])
+  product              Product      @relation(fields: [productId], references: [id])
+  payments             Payment[]
+  reviews              Review[]
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  authorId  String
+  productId String
+  orderId   String?
+  rentalId  String?
+  rating    Float
+  comment   String
+  createdAt DateTime @default(now())
+
+  author    User     @relation(fields: [authorId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  order     Order?   @relation(fields: [orderId], references: [id])
+  rental    Rental?  @relation(fields: [rentalId], references: [id])
+}
+
+model Payment {
+  id          String          @id @default(uuid())
+  orderId     String?
+  rentalId    String?
+  amountPaise Int
+  provider    PaymentProvider @default(RAZORPAY)
+  status      PaymentStatus   @default(SUCCESS)
+  razorpayId  String?
+  createdAt   DateTime        @default(now())
+
+  order       Order?          @relation(fields: [orderId], references: [id])
+  rental      Rental?         @relation(fields: [rentalId], references: [id])
+}
