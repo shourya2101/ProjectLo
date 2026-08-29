@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import conversationRoutes from './routes/conversations.js';
 import messageRoutes from './routes/messages.js';
+import productRoutes from './routes/products.js';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(cookieParser());
 // Routes
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/products', productRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

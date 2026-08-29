@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X, Send, User, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -9,13 +10,17 @@ interface ChatModalProps {
   sellerName: string;
   sellerAvatar?: string;
   projectTitle?: string;
+  productId?: string;
 }
 
-export function ChatModal({ isOpen, onClose, sellerName, sellerAvatar, projectTitle }: ChatModalProps) {
+export function ChatModal({ isOpen, onClose, sellerName, sellerAvatar, projectTitle, productId }: ChatModalProps) {
+  const { session, user } = useAuth();
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    { id: 1, sender: sellerName, text: `Hi! Thanks for reaching out about ${projectTitle || "my project"}. How can I help?`, time: "Just now" }
-  ]);
+  const [isSending, setIsSending] = useState(false);
+  const [messages, setMessages] = useState<{ id: string | number, sender: string, text: string, time: string, isSystem?: boolean }[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,41 +39,153 @@ export function ChatModal({ isOpen, onClose, sellerName, sellerAvatar, projectTi
       };
 
       window.addEventListener("keydown", handleKeyDown);
+
+      // Fetch existing conversation if authenticated
+      if (session && productId) {
+        setIsInitializing(true);
+        setInitError(null);
+
+        fetch("/api/conversations", {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        })
+        .then(res => {
+          if (!res.ok) throw new Error(`Failed to load conversations (${res.status})`);
+          return res.json();
+        })
+        .then(data => {
+          if (!Array.isArray(data)) return [];
+          const conv = data.find((c: any) => c.productId === productId);
+          if (conv) {
+            setConversationId(conv.id);
+            return fetch(`/api/conversations/${conv.id}/messages`, {
+              headers: { Authorization: `Bearer ${session.access_token}` }
+            }).then(res => {
+              if (!res.ok) throw new Error(`Failed to load messages (${res.status})`);
+              return res.json();
+            });
+          }
+          return [];
+        })
+        .then(msgs => {
+          if (Array.isArray(msgs) && msgs.length > 0) {
+            setMessages(msgs.map((m: any) => ({
+              id: m.id,
+              sender: m.senderId === user?.id ? "You" : sellerName,
+              text: m.content,
+              time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            })));
+          } else {
+            setMessages([]);
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching conversation", err);
+          setInitError(err.message || "Could not load conversation. Please try again.");
+          setMessages([]);
+        })
+        .finally(() => setIsInitializing(false));
+      } else if (!session) {
+        // Not authenticated
+        setInitError("Please log in to message this seller.");
+        setMessages([]);
+      }
+
       return () => {
         window.removeEventListener("keydown", handleKeyDown);
         previousActiveElement.current?.focus();
+        setInitError(null);
+        setIsInitializing(false);
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, session, productId, sellerName, projectTitle, user?.id, onClose]);
 
   if (!isOpen) return null;
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || isSending) return;
 
-    const newMsg = {
-      id: Date.now(),
-      sender: "You",
-      text: message.trim(),
-      time: "Just now"
-    };
+    if (!session || !productId) {
+      alert("Please sign in to send messages.");
+      return;
+    }
 
-    setMessages((prev) => [...prev, newMsg]);
+    const msgContent = message.trim();
     setMessage("");
 
-    // Simulate seller auto-reply
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: sellerName,
-          text: "Thanks for the message! I've received your note and will get back to you shortly.",
-          time: "Just now"
+    const tempId = Date.now();
+    setMessages((prev) => [...prev, {
+      id: tempId,
+      sender: "You",
+      text: msgContent,
+      time: "Sending..."
+    }]);
+
+    setIsSending(true);
+    try {
+      let currentConvId = conversationId;
+      
+      // 1. Get or create conversation if we don't have it
+      if (!currentConvId) {
+        const convRes = await fetch("/api/conversations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ productId })
+        });
+        
+        if (!convRes.ok) {
+          const errorData = await convRes.json().catch(() => ({}));
+          console.error("Conversation creation failed", {
+              status: convRes.status,
+              error: errorData
+          });
+          throw new Error(errorData.error || errorData.message || "Unable to start conversation");
         }
-      ]);
-    }, 1200);
+        const conversation = await convRes.json();
+        currentConvId = conversation.id;
+        setConversationId(conversation.id);
+      }
+
+      // 2. Send message
+      const msgRes = await fetch("/api/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          conversationId: currentConvId,
+          content: msgContent
+        })
+      });
+
+      if (!msgRes.ok) {
+        const errorData = await msgRes.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Failed to send message");
+      }
+      
+      const savedMsg = await msgRes.json();
+      
+      // Successfully sent message, update time
+      setMessages((prev) => prev.map(m => m.id === tempId ? {
+        ...m,
+        id: savedMsg.id,
+        time: new Date(savedMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      } : m));
+      
+      window.dispatchEvent(new Event('conversation-created'));
+      
+    } catch (error: any) {
+      console.error("Failed to send message via API:", error);
+      alert(error.message || "Failed to send message. Please try again.");
+      // Remove the optimistically added message
+      setMessages((prev) => prev.filter(m => m.id !== tempId));
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -134,6 +251,12 @@ export function ChatModal({ isOpen, onClose, sellerName, sellerAvatar, projectTi
           ))}
         </div>
 
+        {initError && (
+          <p className="text-xs text-red-400 text-center px-4 py-2 bg-red-500/5">
+            {initError}
+          </p>
+        )}
+        
         {/* Input Footer */}
         <form onSubmit={handleSend} className="p-4 border-t border-slate-800 bg-slate-900 flex items-center gap-2">
           <input
@@ -142,11 +265,13 @@ export function ChatModal({ isOpen, onClose, sellerName, sellerAvatar, projectTi
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={`Message ${sellerName}...`}
-            className="flex-1 bg-slate-800 border border-slate-700/70 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            disabled={isSending || isInitializing}
+            className="flex-1 bg-slate-800 border border-slate-700/70 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
           />
           <button
             type="submit"
-            className="inline-flex items-center justify-center p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors btn-anim active:scale-95 shadow-md shadow-indigo-600/30"
+            disabled={!message.trim() || isSending || isInitializing}
+            className="inline-flex items-center justify-center p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors btn-anim active:scale-95 shadow-md shadow-indigo-600/30 disabled:opacity-50"
             aria-label="Send message"
           >
             <Send className="h-4 w-4" />

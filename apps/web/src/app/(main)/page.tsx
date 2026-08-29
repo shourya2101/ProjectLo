@@ -2,35 +2,53 @@
 
 import Link from "next/link";
 import { Search, ChevronRight, Star, MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatModal } from "@/components/chat/ChatModal";
 
-const CATEGORIES = [
-  { name: "Computer Science", count: 142 },
-  { name: "Hardware & IoT", count: 85 },
-  { name: "Data Science", count: 64 },
-  { name: "Mechanical Design", count: 32 },
-];
-
-const FEATURED_PROJECTS = [
-  { id: 1, title: "Autonomous Drone CV Engine", category: "Computer Science", seller: "Alex Miller", price: "₹1,200", rating: 4.9, type: "Sale" },
-  { id: 2, title: "Nvidia Jetson Orin Nano Dev Kit", category: "Hardware & IoT", seller: "Priya S.", price: "₹200/day", rating: 4.8, type: "Rent" },
-  { id: 3, title: "Financial Market Predictor ML Model", category: "Data Science", seller: "David K.", price: "₹850", rating: 4.7, type: "Sale" },
-  { id: 4, title: "3D Printed Robotic Arm Assembly", category: "Mechanical Design", seller: "Sarah J.", price: "₹150/day", rating: 5.0, type: "Rent" },
-];
-
-const TOP_SELLERS = [
-  { name: "Alex Miller", sales: 45, rating: 4.9, department: "Robotics & CS" },
-  { name: "Priya S.", sales: 38, rating: 4.8, department: "Embedded IoT" },
-  { name: "David K.", sales: 29, rating: 4.7, department: "Data Science" },
-];
+// Removed hardcoded mock data. Fetching from API instead.
 
 export default function Homepage() {
   const [search, setSearch] = useState("");
-  const [chatModalSeller, setChatModalSeller] = useState<{ name: string; title: string } | null>(null);
+  const [chatModalSeller, setChatModalSeller] = useState<{ name: string; title: string, productId?: string } | null>(null);
+  
+  const [categories, setCategories] = useState<{name: string, count: number}[]>([]);
+  const [featuredProjects, setFeaturedProjects] = useState<any[]>([]);
+  const [topSellers, setTopSellers] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch categories
+      fetch("/api/products/categories")
+        .then(res => res.json())
+        .then(data => setCategories(data))
+        .catch(console.error);
+
+      // Fetch featured projects (latest 4)
+      fetch("/api/products?limit=4")
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.products) {
+            setFeaturedProjects(data.products);
+            
+            // Extract top sellers from recent products (naive approach for now)
+            const sellersMap = new Map();
+            data.products.forEach((p: any) => {
+              if (!sellersMap.has(p.seller.id)) {
+                sellersMap.set(p.seller.id, p.seller);
+              }
+            });
+            setTopSellers(Array.from(sellersMap.values()).slice(0, 3));
+          }
+        })
+        .catch(console.error);
+    }, []);
+
+  const router = typeof window !== 'undefined' ? require("next/navigation").useRouter() : null;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (search.trim()) {
+      window.location.href = `/products?search=${encodeURIComponent(search)}`;
+    }
   };
 
   return (
@@ -79,7 +97,7 @@ export default function Homepage() {
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {CATEGORIES.map((category) => (
+          {categories.length > 0 ? categories.map((category) => (
             <Link 
               key={category.name} 
               href={`/products?category=${encodeURIComponent(category.name)}`}
@@ -88,7 +106,9 @@ export default function Homepage() {
               <span className="font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">{category.name}</span>
               <span className="mt-2 text-xs font-medium text-slate-500">{category.count} listings</span>
             </Link>
-          ))}
+          )) : (
+            <div className="col-span-full text-center text-slate-500 py-4">Loading categories...</div>
+          )}
         </div>
       </section>
 
@@ -101,17 +121,17 @@ export default function Homepage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURED_PROJECTS.map((project) => (
+          {featuredProjects.length > 0 ? featuredProjects.map((project) => (
             <div key={project.id} className="group relative flex flex-col rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl hover:border-slate-700 transition-all">
               <div className="aspect-video w-full bg-slate-950 relative overflow-hidden">
                 <img 
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(project.title.substring(0, 2))}&background=1e293b&color=fff&size=400`} 
+                  src={project.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(project.title.substring(0, 2))}&background=1e293b&color=fff&size=400`} 
                   alt={project.title}
                   className="h-full w-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute top-3 right-3">
                   <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${
-                    project.type === 'Sale' 
+                    project.type.includes('SALE') 
                       ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' 
                       : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                   }`}>
@@ -128,25 +148,36 @@ export default function Homepage() {
                 </h3>
                 
                 <div className="mt-auto pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                  <span className="text-lg font-bold text-slate-100">{project.price}</span>
+                  <span className="text-lg font-bold text-slate-100">
+                    {project.type === 'RENT' 
+                      ? `₹${(project.priceRentPaise / 100).toFixed(2)}/day` 
+                      : `₹${(project.priceSalePaise / 100).toFixed(2)}`}
+                  </span>
                   
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setChatModalSeller({ name: project.seller, title: project.title })}
+                      onClick={() => setChatModalSeller({ name: project.seller.name, title: project.title, productId: project.id })}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors btn-anim"
-                      title={`Chat with ${project.seller}`}
+                      title={`Chat with ${project.seller.name}`}
                     >
                       <MessageSquare className="h-4 w-4" />
                     </button>
                     <div className="flex items-center gap-1 text-xs text-slate-400">
                       <Star className="h-3.5 w-3.5 text-amber-400 fill-current" />
-                      {project.rating}
+                      {project.seller.rating || 5.0}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          ))}
+          )) : (
+            <div className="col-span-full py-12 text-center text-slate-500">
+              <p>No projects listed yet.</p>
+              <Link href="/sell" className="inline-block mt-4 text-indigo-400 hover:text-indigo-300">
+                Be the first to list your project
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
@@ -154,24 +185,24 @@ export default function Homepage() {
       <section>
         <h2 className="text-xl font-bold tracking-tight text-slate-100 mb-6">Top Rated Sellers</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {TOP_SELLERS.map((seller) => (
-            <div key={seller.name} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+          {topSellers.length > 0 ? topSellers.map((seller) => (
+            <div key={seller.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
               <div className="flex items-center gap-4">
                 <img 
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(seller.name)}&background=6366f1&color=fff`} 
+                  src={seller.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(seller.name)}&background=6366f1&color=fff`} 
                   alt={seller.name}
-                  className="h-12 w-12 rounded-full ring-2 ring-indigo-500/40"
+                  className="h-12 w-12 rounded-full ring-2 ring-indigo-500/40 object-cover"
                 />
                 <div>
                   <h3 className="font-bold text-slate-100 text-sm">{seller.name}</h3>
-                  <p className="text-xs text-slate-400">{seller.department}</p>
+                  <p className="text-xs text-slate-400">{seller.department || 'User'}</p>
                   <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                     <span className="flex items-center gap-1 font-semibold text-slate-200">
                       <Star className="h-3.5 w-3.5 text-amber-400 fill-current" />
-                      {seller.rating}
+                      {seller.rating || 5.0}
                     </span>
                     <span>•</span>
-                    <span>{seller.sales} deals</span>
+                    <span>{seller.completedDeals || 0} deals</span>
                   </div>
                 </div>
               </div>
@@ -184,7 +215,9 @@ export default function Homepage() {
                 <MessageSquare className="h-5 w-5" />
               </button>
             </div>
-          ))}
+          )) : (
+            <div className="col-span-full text-slate-500 text-center py-4">No sellers yet.</div>
+          )}
         </div>
       </section>
 
@@ -195,6 +228,7 @@ export default function Homepage() {
           onClose={() => setChatModalSeller(null)}
           sellerName={chatModalSeller.name}
           projectTitle={chatModalSeller.title}
+          productId={chatModalSeller.productId}
         />
       )}
 

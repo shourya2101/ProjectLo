@@ -5,12 +5,16 @@ export interface AuthRequest extends Request {
   userId?: string;
 }
 
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_ANON_KEY || '' // We can use ANON_KEY for token verification via getUser()
-);
+let supabase: ReturnType<typeof createClient> | null = null;
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!supabase) {
+    supabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_ANON_KEY || ''
+    );
+  }
+
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

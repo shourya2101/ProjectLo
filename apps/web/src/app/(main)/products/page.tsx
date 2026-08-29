@@ -1,24 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, Plus, ChevronDown, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { ChatModal } from "@/components/chat/ChatModal";
 
-const DUMMY_PRODUCTS = [
-  { id: 1, title: "Autonomous Drone CV Engine", seller: "Alex Miller", category: "Hardware", type: "Rent", price: "₹200/day", status: "Available", image: "https://ui-avatars.com/api/?name=AM&background=0D8ABC&color=fff" },
-  { id: 2, title: "Machine Learning Notebooks", seller: "David K.", category: "Digital", type: "Sale", price: "₹500", status: "Available", image: "https://ui-avatars.com/api/?name=ML&background=10B981&color=fff" },
-  { id: 3, title: "Final Year CS Report & Specs", seller: "Sarah J.", category: "Digital", type: "Sale", price: "₹1,200", status: "Sold Out", image: "https://ui-avatars.com/api/?name=CS&background=F59E0B&color=fff" },
-  { id: 4, title: "IoT Smart Home Dev Kit", seller: "Priya S.", category: "Hardware", type: "Sale & Rent", price: "₹4,500", status: "Available", image: "https://ui-avatars.com/api/?name=IO&background=6366F1&color=fff" },
-];
-
 export default function Marketplace() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [chatModalSeller, setChatModalSeller] = useState<{ name: string; title: string } | null>(null);
+  const [chatModalSeller, setChatModalSeller] = useState<{ name: string; title: string; productId: string } | null>(null);
+  
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredProducts = DUMMY_PRODUCTS.filter(p => 
-    p.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    let query = "/api/products?";
+      if (searchTerm) {
+        query += `search=${encodeURIComponent(searchTerm)}`;
+      }
+      fetch(query)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.products) {
+            setProducts(data.products);
+          }
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoading(false);
+        });
+    }, [searchTerm]); // Trigger search on typing (could debounce in a real app)
 
   return (
     <div className="space-y-8 text-slate-100">
@@ -29,10 +40,10 @@ export default function Marketplace() {
           <p className="text-sm text-slate-400 mt-1">Browse, buy, and rent college projects from verified peers.</p>
         </div>
         
-        <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all btn-anim active:scale-95">
+        <Link href="/sell" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all btn-anim active:scale-95">
           <Plus className="w-4 h-4" />
           Add Listing
-        </button>
+        </Link>
       </div>
 
       {/* Filters & Search */}
@@ -62,54 +73,66 @@ export default function Marketplace() {
 
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
-          <div key={product.id} className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl hover:border-slate-700 transition-all flex flex-col">
-            <div className="h-48 bg-slate-950 relative w-full overflow-hidden">
-              <img src={product.image} alt={product.title} className="w-full h-full object-cover opacity-85" />
-              <div className="absolute top-3 left-3 flex gap-2">
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900/90 text-slate-200 border border-slate-700 shadow-sm">
-                  {product.category}
-                </span>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${
-                  product.type.includes('Sale') ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                }`}>
-                  {product.type}
-                </span>
-              </div>
-            </div>
-            
-            <div className="p-5 flex flex-col flex-1">
-              <h3 className="text-base font-bold text-slate-100 leading-snug mb-1">
-                <Link href={`/products/${product.id}`} className="hover:text-indigo-300 transition-colors">
-                  {product.title}
-                </Link>
-              </h3>
-              <p className="text-xs text-slate-400 mb-4">Seller: <span className="text-slate-300 font-medium">{product.seller}</span></p>
-              
-              <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-800">
-                <div>
-                  <span className="text-lg font-bold text-slate-100">{product.price}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setChatModalSeller({ name: product.seller, title: product.title })}
-                    className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors btn-anim active:scale-95"
-                    title={`Chat with ${product.seller}`}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                  </button>
-
-                  <span className={`text-xs font-semibold ${
-                    product.status === 'Available' ? 'text-emerald-400' : 'text-red-400'
+        {loading ? (
+          <div className="col-span-full py-12 text-center text-slate-500">Loading listings...</div>
+        ) : products.length > 0 ? (
+          products.map((product) => (
+            <div key={product.id} className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl hover:border-slate-700 transition-all flex flex-col">
+              <div className="h-48 bg-slate-950 relative w-full overflow-hidden">
+                <img src={product.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.title.substring(0, 2))}&background=1e293b&color=fff&size=400`} alt={product.title} className="w-full h-full object-cover opacity-85" />
+                <div className="absolute top-3 left-3 flex gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900/90 text-slate-200 border border-slate-700 shadow-sm">
+                    {product.category}
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${
+                    product.type.includes('SALE') ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                   }`}>
-                    {product.status}
+                    {product.type}
                   </span>
                 </div>
               </div>
+              
+              <div className="p-5 flex flex-col flex-1">
+                <h3 className="text-base font-bold text-slate-100 leading-snug mb-1">
+                  <Link href={`/products/${product.id}`} className="hover:text-indigo-300 transition-colors">
+                    {product.title}
+                  </Link>
+                </h3>
+                <p className="text-xs text-slate-400 mb-4">Seller: <span className="text-slate-300 font-medium">{product.seller.name}</span></p>
+                
+                <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-800">
+                  <div>
+                    <span className="text-lg font-bold text-slate-100">
+                      {product.type === 'RENT' 
+                        ? `₹${(product.priceRentPaise / 100).toFixed(2)}/day` 
+                        : `₹${(product.priceSalePaise / 100).toFixed(2)}`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setChatModalSeller({ name: product.seller.name, title: product.title, productId: product.id.toString() })}
+                      className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors btn-anim active:scale-95"
+                      title={`Chat with ${product.seller.name}`}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </button>
+
+                    <span className={`text-xs font-semibold ${
+                      product.status === 'Available' ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                      {product.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
+          ))
+        ) : (
+          <div className="col-span-full py-12 text-center text-slate-500">
+            <p>No listings found.</p>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Chat Modal */}
@@ -119,6 +142,7 @@ export default function Marketplace() {
           onClose={() => setChatModalSeller(null)}
           sellerName={chatModalSeller.name}
           projectTitle={chatModalSeller.title}
+          productId={chatModalSeller.productId}
         />
       )}
 

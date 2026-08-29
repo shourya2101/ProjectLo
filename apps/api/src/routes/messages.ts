@@ -6,12 +6,21 @@ import type { AuthRequest } from '../middleware/auth.js';
 const router = Router();
 router.use(authenticate);
 
+// 6. SEND MESSAGE
 router.post('/', async (req: AuthRequest, res) => {
   const userId = req.userId!;
-  const { conversationId, content } = req.body;
+  let { conversationId, content } = req.body;
 
   if (!conversationId || !content) {
     return res.status(400).json({ error: 'conversationId and content are required' });
+  }
+
+  content = String(content).trim();
+  if (content.length === 0) {
+    return res.status(422).json({ error: 'Message content cannot be empty' });
+  }
+  if (content.length > 2000) {
+    return res.status(422).json({ error: 'Message exceeds maximum length of 2000 characters' });
   }
 
   try {
@@ -24,10 +33,15 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Not a participant' });
     }
 
+    // Reject messages if the conversation is COMPLETED/CLOSED
+    if (conversation.status === 'COMPLETED' || conversation.status === 'CLOSED') {
+      return res.status(403).json({ error: 'This conversation is closed/completed and read-only.' });
+    }
+
     const message = await prisma.message.create({
       data: {
         conversationId,
-        senderId: userId,
+        senderId: userId, // Backend derives senderId from authenticated user
         content
       }
     });

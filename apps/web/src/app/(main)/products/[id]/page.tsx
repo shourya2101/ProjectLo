@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import { 
   Star, 
   ShieldCheck, 
@@ -17,47 +17,50 @@ import {
 } from "lucide-react";
 import { ChatModal } from "@/components/chat/ChatModal";
 
-const MOCK_PRODUCT = {
-  id: "1",
-  title: "Autonomous Drone CV Engine & ROS2 Controller",
-  category: "Computer Science",
-  subcategory: "Robotics & Vision",
-  type: "Sale & Rent",
-  priceSale: "₹1,200",
-  priceRent: "₹150/day",
-  rating: 4.9,
-  reviewCount: 28,
-  salesCount: 45,
-  updatedAt: "August 2026",
-  description: "Complete senior design project featuring real-time computer vision obstacle detection and ROS2 integration for autonomous multirotor flight controller.",
-  specs: [
-    { label: "Language", value: "C++ / Python 3.10" },
-    { label: "Framework", value: "ROS2 Humble / OpenCV 4.8" },
-    { label: "Hardware Req.", value: "Nvidia Jetson / Raspberry Pi 4" },
-    { label: "Documentation", value: "Full IEEE Format Report & Setup Guide" },
-    { label: "License", value: "Academic Re-use License" },
-  ],
-  features: [
-    "YOLO-based object detection tuned for low latency",
-    "PX4 autopilot integration over MAVLink",
-    "Gazebo simulation environment included",
-    "Step-by-step video demonstration and setup checklist"
-  ],
-  seller: {
-    name: "Alex Miller",
-    department: "Computer Engineering, Senior Year",
-    rating: 4.9,
-    completedDeals: 45,
-    joinedDate: "Jan 2025",
-    avatar: "https://ui-avatars.com/api/?name=Alex+Miller&background=6366f1&color=fff"
-  }
-};
+// Removed MOCK_PRODUCT
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const [selectedTab, setSelectedTab] = useState<"sale" | "rent">("sale");
   const [copied, setCopied] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/products/${resolvedParams.id}`)
+        .then(async res => {
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || errData.message || `Failed to fetch: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          setProduct(data);
+          if (data.type === 'RENT') {
+            setSelectedTab('rent');
+          } else {
+            setSelectedTab('sale');
+          }
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setError(err.message);
+          setLoading(false);
+        });
+    }, [resolvedParams.id]);
+
+  if (loading) {
+    return <div className="max-w-6xl mx-auto py-12 text-center text-slate-400">Loading product details...</div>;
+  }
+
+  if (error || !product) {
+    return <div className="max-w-6xl mx-auto py-12 text-center text-red-400">{error || "Product not found"}</div>;
+  }
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -100,24 +103,26 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           {/* Header Info */}
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
-              <span>{MOCK_PRODUCT.category}</span>
-              <span>•</span>
-              <span>{MOCK_PRODUCT.subcategory}</span>
+              <span>{product.category}</span>
+              {product.subcategory && (
+                <>
+                  <span>•</span>
+                  <span>{product.subcategory}</span>
+                </>
+              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100 leading-tight">
-              {MOCK_PRODUCT.title}
+              {product.title}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-400">
               <div className="flex items-center gap-1">
                 <Star className="h-4 w-4 fill-current text-amber-400" />
-                <span className="font-bold text-slate-100">{MOCK_PRODUCT.rating}</span>
-                <span>({MOCK_PRODUCT.reviewCount} reviews)</span>
+                <span className="font-bold text-slate-100">{product.rating}</span>
+                <span>({product.reviewCount} reviews)</span>
               </div>
               <span>•</span>
-              <span>{MOCK_PRODUCT.salesCount} purchases</span>
-              <span>•</span>
               <span className="flex items-center gap-1 text-slate-500">
-                <Calendar className="h-4 w-4" /> Updated {MOCK_PRODUCT.updatedAt}
+                <Calendar className="h-4 w-4" /> Posted {new Date(product.createdAt).toLocaleDateString()}
               </span>
             </div>
           </div>
@@ -125,7 +130,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           {/* Project Preview Banner */}
           <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative aspect-video flex items-center justify-center shadow-2xl">
             <img 
-              src={`https://ui-avatars.com/api/?name=ROS2+Vision&background=0b0f19&color=38bdf8&size=600`}
+              src={product.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.title.substring(0, 4))}&background=0b0f19&color=38bdf8&size=600`}
               alt="Project Preview"
               className="w-full h-full object-cover opacity-80"
             />
@@ -140,37 +145,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           {/* Description */}
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-slate-100 border-b border-slate-800 pb-2">Overview</h2>
-            <p className="text-slate-300 leading-relaxed text-sm sm:text-base">
-              {MOCK_PRODUCT.description}
+            <p className="text-slate-300 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">
+              {product.description}
             </p>
           </div>
 
-          {/* Key Features */}
+          {/* Key Features (Removed static features for now) */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-100 border-b border-slate-800 pb-2">Key Highlights</h2>
+            <h2 className="text-lg font-bold text-slate-100 border-b border-slate-800 pb-2">Listing Info</h2>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {MOCK_PRODUCT.features.map((feature, idx) => (
-                <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>{feature}</span>
-                </li>
-              ))}
+              <li className="flex items-start gap-2 text-sm text-slate-300">
+                <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+                <span>Inventory Type: {product.inventoryType}</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-slate-300">
+                <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+                <span>Listing Type: {product.type}</span>
+              </li>
             </ul>
           </div>
 
-          {/* Technical Specs */}
+          {/* Technical Specs (Removed static specs for now) */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-100 border-b border-slate-800 pb-2">Technical Specifications</h2>
-            <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-900">
-              <dl className="divide-y divide-slate-800">
-                {MOCK_PRODUCT.specs.map((spec, idx) => (
-                  <div key={idx} className="px-4 py-3.5 sm:grid sm:grid-cols-3 sm:gap-4 odd:bg-slate-900/50">
-                    <dt className="text-sm font-semibold text-slate-400">{spec.label}</dt>
-                    <dd className="mt-1 text-sm font-bold text-slate-100 sm:col-span-2 sm:mt-0">{spec.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
           </div>
 
           {/* Seller Card */}
@@ -179,20 +175,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <img 
-                  src={MOCK_PRODUCT.seller.avatar} 
-                  alt={MOCK_PRODUCT.seller.name} 
-                  className="h-12 w-12 rounded-full ring-2 ring-indigo-500/50"
+                  src={product.seller.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.seller.name)}&background=6366f1&color=fff`} 
+                  alt={product.seller.name} 
+                  className="h-12 w-12 rounded-full ring-2 ring-indigo-500/50 object-cover"
                 />
                 <div>
-                  <h3 className="font-bold text-slate-100 text-base">{MOCK_PRODUCT.seller.name}</h3>
-                  <p className="text-xs text-slate-400">{MOCK_PRODUCT.seller.department}</p>
+                  <h3 className="font-bold text-slate-100 text-base">{product.seller.name}</h3>
+                  <p className="text-xs text-slate-400">{product.seller.department || 'User'}</p>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
                     <span className="flex items-center gap-1 font-semibold text-slate-200">
                       <Star className="h-3.5 w-3.5 text-amber-400 fill-current" />
-                      {MOCK_PRODUCT.seller.rating} rating
+                      {product.seller.rating || 5.0} rating
                     </span>
                     <span>•</span>
-                    <span>{MOCK_PRODUCT.seller.completedDeals} deals completed</span>
+                    <span>{product.seller.completedDeals || 0} deals completed</span>
                   </div>
                 </div>
               </div>
@@ -219,7 +215,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 onClick={() => setSelectedTab("sale")}
                 className={`py-2 rounded-lg transition-all btn-anim ${
                   selectedTab === "sale" ? "bg-indigo-600 text-white shadow-md font-bold" : "hover:text-slate-200"
-                }`}
+                } ${!product.priceSalePaise && product.type !== 'SALE' && product.type !== 'BOTH' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!product.priceSalePaise && product.type !== 'SALE' && product.type !== 'BOTH'}
               >
                 Buy Outright
               </button>
@@ -227,7 +224,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 onClick={() => setSelectedTab("rent")}
                 className={`py-2 rounded-lg transition-all btn-anim ${
                   selectedTab === "rent" ? "bg-indigo-600 text-white shadow-md font-bold" : "hover:text-slate-200"
-                }`}
+                } ${!product.priceRentPaise && product.type !== 'RENT' && product.type !== 'BOTH' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!product.priceRentPaise && product.type !== 'RENT' && product.type !== 'BOTH'}
               >
                 Rent Hardware
               </button>
@@ -237,7 +235,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold text-slate-100">
-                  {selectedTab === "sale" ? MOCK_PRODUCT.priceSale : MOCK_PRODUCT.priceRent}
+                  {selectedTab === "sale" && product.priceSalePaise != null ? `₹${(product.priceSalePaise / 100).toFixed(2)}` : ''}
+                  {selectedTab === "rent" && product.priceRentPaise != null ? `₹${(product.priceRentPaise / 100).toFixed(2)}` : ''}
                 </span>
                 <span className="text-xs text-slate-400">
                   {selectedTab === "sale" ? "Full project license" : "Rental per day"}
@@ -298,9 +297,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       <ChatModal
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
-        sellerName={MOCK_PRODUCT.seller.name}
-        sellerAvatar={MOCK_PRODUCT.seller.avatar}
-        projectTitle={MOCK_PRODUCT.title}
+        sellerName={product.seller.name}
+        sellerAvatar={product.seller.avatar}
+        projectTitle={product.title}
+        productId={product.id}
       />
 
     </div>

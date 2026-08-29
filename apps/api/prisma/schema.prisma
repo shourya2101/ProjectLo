@@ -25,6 +25,12 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum ConversationStatus {
+  ACTIVE
+  COMPLETED
+  CLOSED
+}
+
 enum RentalStatus {
   PENDING
   ACTIVE
@@ -94,10 +100,13 @@ model Conversation {
   user1Id   String
   user2Id   String
   productId String?
+  orderId   String?
+  status    ConversationStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   product   Product?  @relation(fields: [productId], references: [id])
+  order     Order?    @relation(fields: [orderId], references: [id])
   messages  Message[]
 
   @@unique([user1Id, user2Id, productId])
@@ -126,6 +135,7 @@ model Order {
   product     Product     @relation(fields: [productId], references: [id])
   payments    Payment[]
   reviews     Review[]
+  conversations Conversation[]
 }
 
 model Rental {
