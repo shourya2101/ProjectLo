@@ -8,6 +8,25 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum ProductStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  DELETED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum InventoryType {
   DIGITAL
   PHYSICAL
@@ -50,22 +69,46 @@ enum PaymentProvider {
 }
 
 model User {
-  id              String         @id @default(uuid())
-  email           String         @unique
-  name            String
-  avatar          String?
-  institution     String?
-  department      String?
-  rating          Float          @default(5.0)
-  completedDeals  Int            @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  name               String
+  avatar             String?
+  institution        String?
+  department         String?
+  role               Role                @default(BUYER)
+  isSuspended        Boolean             @default(false)
+  suspendedReason    String?
+  rating             Float               @default(5.0)
+  completedDeals     Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
-  products        Product[]
-  orders          Order[]        @relation("BuyerOrders")
-  rentals         Rental[]       @relation("RenterRentals")
-  sentMessages    Message[]
-  reviewsAuthored Review[]
+  products           Product[]
+  orders             Order[]             @relation("BuyerOrders")
+  rentals            Rental[]            @relation("RenterRentals")
+  sentMessages       Message[]
+  reviewsAuthored    Review[]
+  sellerApplications SellerApplication[]
+}
+
+model SellerApplication {
+  id              String            @id @default(uuid())
+  userId          String
+  fullName        String
+  email           String
+  phone           String
+  institution     String
+  about           String
+  reason          String
+  studentProof    String?
+  status          ApplicationStatus @default(PENDING)
+  rejectionReason String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -80,7 +123,8 @@ model Product {
   priceRentPaise        Int?
   securityDepositPaise  Int?
   image                 String?
-  status                String        @default("Available")
+  status                ProductStatus @default(PENDING_REVIEW)
+  rejectionReason       String?
   rating                Float         @default(5.0)
   reviewCount           Int           @default(0)
   createdAt             DateTime      @default(now())

@@ -10,17 +10,19 @@ import {
   User, 
   FileText, 
   CheckCircle2, 
-  ArrowLeft,
-  Share2,
-  Bookmark,
-  MessageSquare
+  ArrowLeft, 
+  Share2, 
+  Bookmark, 
+  MessageSquare,
+  Clock,
+  AlertCircle
 } from "lucide-react";
 import { ChatModal } from "@/components/chat/ChatModal";
-
-// Removed MOCK_PRODUCT
+import { useAuth } from "@/lib/auth-context";
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
+  const { session } = useAuth();
   const [selectedTab, setSelectedTab] = useState<"sale" | "rent">("sale");
   const [copied, setCopied] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -30,36 +32,57 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`/api/products/${resolvedParams.id}`)
-        .then(async res => {
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || errData.message || `Failed to fetch: ${res.status}`);
-          }
-          return res.json();
-        })
-        .then(data => {
-          setProduct(data);
-          if (data.type === 'RENT') {
-            setSelectedTab('rent');
-          } else {
-            setSelectedTab('sale');
-          }
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error(err);
-          setError(err.message);
-          setLoading(false);
-        });
-    }, [resolvedParams.id]);
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+
+    fetch(`/api/products/${resolvedParams.id}`, { headers })
+      .then(async res => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `Failed to fetch: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        setProduct(data);
+        if (data.type === 'RENT') {
+          setSelectedTab('rent');
+        } else {
+          setSelectedTab('sale');
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [resolvedParams.id, session]);
 
   if (loading) {
     return <div className="max-w-6xl mx-auto py-12 text-center text-slate-400">Loading product details...</div>;
   }
 
   if (error || !product) {
-    return <div className="max-w-6xl mx-auto py-12 text-center text-red-400">{error || "Product not found"}</div>;
+    return (
+      <div className="max-w-xl mx-auto py-16 text-center space-y-4">
+        <div className="inline-flex p-3 rounded-2xl bg-red-500/10 text-red-400">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-100">Listing Not Available</h1>
+        <p className="text-sm text-slate-400">
+          {error || "This listing may be pending moderation or does not exist."}
+        </p>
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/30 btn-anim"
+        >
+          Return to Marketplace
+        </Link>
+      </div>
+    );
   }
 
   const handleShare = () => {
@@ -68,8 +91,38 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const isVerifiedSeller = product.seller?.role === "SELLER" || product.seller?.role === "ADMIN";
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 text-slate-100">
+      
+      {/* Moderation status banner if not approved */}
+      {product.status !== "APPROVED" && (
+        <div className={`p-4 rounded-2xl border text-xs flex items-center justify-between gap-4 ${
+          product.status === "PENDING_REVIEW"
+            ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+            : "bg-red-500/10 border-red-500/30 text-red-300"
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {product.status === "PENDING_REVIEW" ? (
+              <Clock className="w-5 h-5 shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 shrink-0" />
+            )}
+            <div>
+              <span className="font-bold uppercase tracking-wider block">
+                {product.status === "PENDING_REVIEW" ? "Moderation Status: Pending Review" : "Moderation Status: Rejected"}
+              </span>
+              <span>
+                {product.status === "PENDING_REVIEW"
+                  ? "This listing is currently in the review queue and is only visible to you and platform administrators."
+                  : `Feedback: ${product.rejectionReason || "Listing does not meet moderation standards."}`}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation & Breadcrumb */}
       <div className="flex items-center justify-between">
         <Link 
@@ -128,7 +181,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Project Preview Banner */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative aspect-video flex items-center justify-center shadow-2xl">
+          <div className="rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative aspect-video flex items-center justify-center shadow-2xl">
             <img 
               src={product.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.title.substring(0, 4))}&background=0b0f19&color=38bdf8&size=600`}
               alt="Project Preview"
@@ -136,8 +189,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#090d16] via-transparent to-transparent flex items-end p-6">
               <div className="text-white space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Verified Peer Codebase</p>
-                <p className="text-sm font-semibold">Includes Source Code, CAD Files & Documentation</p>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Platform Reviewed &amp; Approved</span>
+                </div>
+                <p className="text-sm font-semibold">Includes Complete Documentation, Source Code &amp; Specs</p>
               </div>
             </div>
           </div>
@@ -150,7 +206,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </p>
           </div>
 
-          {/* Key Features (Removed static features for now) */}
+          {/* Key Features */}
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-slate-100 border-b border-slate-800 pb-2">Listing Info</h2>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -165,12 +221,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </ul>
           </div>
 
-          {/* Technical Specs (Removed static specs for now) */}
-          <div className="space-y-4">
-          </div>
-
           {/* Seller Card */}
-          <div className="rounded-2xl border border-slate-800 p-6 bg-slate-900/80 space-y-4 shadow-xl">
+          <div className="rounded-3xl border border-slate-800 p-6 bg-slate-900/80 space-y-4 shadow-xl">
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Project Author</h2>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -180,8 +232,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   className="h-12 w-12 rounded-full ring-2 ring-indigo-500/50 object-cover"
                 />
                 <div>
-                  <h3 className="font-bold text-slate-100 text-base">{product.seller.name}</h3>
-                  <p className="text-xs text-slate-400">{product.seller.department || 'User'}</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-100 text-base">{product.seller.name}</h3>
+                    {isVerifiedSeller && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <ShieldCheck className="w-3 h-3" />
+                        Verified Seller
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400">{product.seller.institution || product.seller.department || 'Verified Student'}</p>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
                     <span className="flex items-center gap-1 font-semibold text-slate-200">
                       <Star className="h-3.5 w-3.5 text-amber-400 fill-current" />
@@ -207,7 +267,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Right Action Column */}
         <div className="space-y-6">
-          <div className="sticky top-24 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-6">
+          <div className="sticky top-24 rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-6">
             
             {/* Purchase Mode Toggle */}
             <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950 rounded-xl text-sm font-semibold text-slate-400 border border-slate-800">
@@ -276,7 +336,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="border-t border-slate-800 pt-4 space-y-3">
               <div className="flex items-center gap-2.5 text-xs text-slate-400">
                 <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span>Verified Peer Code & Anti-Plagiarism Check</span>
+                <span>Reviewed &amp; Approved by ProjectLo Moderation</span>
               </div>
               <div className="flex items-center gap-2.5 text-xs text-slate-400">
                 <FileText className="h-4 w-4 text-indigo-400 shrink-0" />
@@ -284,7 +344,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               </div>
               <div className="flex items-center gap-2.5 text-xs text-slate-400">
                 <User className="h-4 w-4 text-slate-400 shrink-0" />
-                <span>Direct peer-to-peer messaging with seller</span>
+                <span>Direct peer-to-peer messaging with verified seller</span>
               </div>
             </div>
 

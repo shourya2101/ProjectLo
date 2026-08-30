@@ -2,17 +2,19 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, Clock, Sparkles, AlertTriangle, ArrowRight, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/browser";
 import { useAuth } from "@/lib/auth-context";
 
 export default function SellPage() {
   const router = useRouter();
-  const { user, session } = useAuth();
+  const { user, session, isSeller, isAdmin, isSuspended, dbUser, isLoading } = useAuth();
   const supabase = createClient();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [submittedSuccess, setSubmittedSuccess] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -30,11 +32,130 @@ export default function SellPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  if (user === null) {
-    if (typeof window !== 'undefined') {
-      router.push('/login');
-    }
-    return null;
+  if (isLoading) {
+    return <div className="max-w-3xl mx-auto py-16 text-center text-slate-500">Checking seller credentials...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-xl mx-auto py-16 text-center space-y-4">
+        <div className="inline-flex p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-100">Sign in to List a Project</h1>
+        <p className="text-sm text-slate-400">
+          You must be logged in with a verified seller account to create listings.
+        </p>
+        <Link
+          href="/auth"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/30 btn-anim"
+        >
+          Sign In
+        </Link>
+      </div>
+    );
+  }
+
+  // If user is a BUYER and not a SELLER/ADMIN
+  if (!isSeller && !isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 space-y-6 bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl">
+        <div className="inline-flex p-4 rounded-2xl bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/30">
+          <Sparkles className="w-10 h-10" />
+        </div>
+
+        <div className="space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100">
+            Seller Verification Required
+          </h1>
+          <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+            ProjectLo requires all project authors and hardware vendors to verify their student or institutional identity before publishing listings.
+          </p>
+        </div>
+
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/become-seller"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all btn-anim"
+          >
+            Apply to Become a Seller <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-xl transition-all"
+          >
+            Browse Marketplace
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // If seller is suspended
+  if (isSuspended) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 space-y-4 bg-slate-900 border border-red-500/30 rounded-3xl p-8 text-center shadow-2xl">
+        <div className="inline-flex p-4 rounded-2xl bg-red-500/10 text-red-400 ring-1 ring-red-500/30">
+          <AlertTriangle className="w-10 h-10" />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-100">Selling Privileges Suspended</h1>
+        <p className="text-sm text-red-300 max-w-md mx-auto">
+          {dbUser?.suspendedReason || "Your selling privileges are currently suspended. You cannot create new listings."}
+        </p>
+      </div>
+    );
+  }
+
+  // If successfully submitted
+  if (submittedSuccess) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 space-y-6 bg-slate-900 border border-amber-500/30 rounded-3xl p-8 text-center shadow-2xl">
+        <div className="inline-flex p-4 rounded-2xl bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30">
+          <Clock className="w-10 h-10 animate-spin-slow" />
+        </div>
+
+        <div className="space-y-2">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            Status: Pending Review
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100 pt-2">
+            Listing Submitted for Moderation!
+          </h1>
+          <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+            "{submittedSuccess.title}" has been placed in the moderation queue. A ProjectLo administrator will review the codebase details before it appears in the public marketplace.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <Link
+            href="/my-listings"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all btn-anim"
+          >
+            Go to My Listings <ArrowRight className="w-4 h-4" />
+          </Link>
+          <button
+            onClick={() => {
+              setSubmittedSuccess(null);
+              setFormData({
+                title: "",
+                description: "",
+                category: "Computer Science",
+                subcategory: "",
+                inventoryType: "DIGITAL",
+                type: "SALE",
+                priceSale: "",
+                priceRent: "",
+                securityDeposit: "",
+              });
+              removeImage();
+            }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-xl border border-slate-700 transition-all btn-anim"
+          >
+            Create Another Listing
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +201,7 @@ export default function SellPage() {
         const fileName = `${crypto.randomUUID()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("project-images")
           .upload(filePath, imageFile);
 
@@ -118,7 +239,7 @@ export default function SellPage() {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         
         // Attempt cleanup if product creation fails but image uploaded
         if (imageUrl && imageFile) {
@@ -128,32 +249,43 @@ export default function SellPage() {
            }
         }
         
-        throw new Error(errorData.error || "Failed to create listing");
+        setError(errorData.error || "Failed to create listing. Please check required fields.");
+        setLoading(false);
+        return;
       }
 
       const newProduct = await res.json();
-      router.push(`/products/${newProduct.id}`);
+      setSubmittedSuccess(newProduct);
 
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An unexpected error occurred");
+      setError(err?.message || "An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8 text-slate-100">
-      <h1 className="text-3xl font-bold mb-2">List a Project</h1>
-      <p className="text-slate-400 mb-8">Fill out the details below to sell or rent your project.</p>
+    <div className="max-w-3xl mx-auto py-8 text-slate-100 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold mb-1">List a Project</h1>
+        <p className="text-slate-400 text-sm">Submit your capstone code, hardware rental, or engineering design.</p>
+      </div>
+
+      {/* Moderation notice */}
+      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 flex items-start gap-3">
+        <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+        <p className="leading-relaxed">
+          <strong>Moderation Policy:</strong> All listings start in <span className="font-semibold text-amber-300">Pending Review</span> and are reviewed by ProjectLo moderators before appearing publicly in the marketplace.
+        </p>
+      </div>
 
       {error && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl mb-6">
+        <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-xl">
+      <form onSubmit={handleSubmit} className="space-y-6 bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-xl">
         
         {/* Title */}
         <div className="space-y-2">
@@ -302,7 +434,7 @@ export default function SellPage() {
             className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Creating Listing..." : "List Project"}
+            {loading ? "Submitting for Moderation..." : "Submit Project for Review"}
           </button>
         </div>
       </form>

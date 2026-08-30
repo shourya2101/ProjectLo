@@ -149,7 +149,7 @@ router.post('/:id/complete-order', async (req: AuthRequest, res) => {
   try {
     // 3. Retrieve the conversation
     const conversation = await prisma.conversation.findUnique({
-      where: { id }
+      where: { id: String(id) }
     });
 
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });

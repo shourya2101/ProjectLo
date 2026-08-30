@@ -1,12 +1,12 @@
 "use client";
 
-import { Bell, Search, Menu, User, LogOut, MessageSquare, Briefcase, Settings } from "lucide-react";
+import { Bell, Search, Menu, User, LogOut, MessageSquare, Briefcase, Settings, Sparkles, BarChart3, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
-  const { user, isAuthenticated, signOut } = useAuth();
+  const { user, dbUser, role, isBuyer, isSeller, isAdmin, isAuthenticated, signOut } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +36,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="h-6 w-px bg-slate-800 lg:hidden" aria-hidden="true" />
 
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        <form className="relative flex flex-1" action="#" method="GET">
+        <form className="relative flex flex-1" action="/products" method="GET">
           <label htmlFor="search-field" className="sr-only">Search</label>
           <Search 
             className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-slate-500" 
@@ -81,13 +81,18 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                 className="flex items-center gap-3 p-1.5 hover:bg-slate-800/60 rounded-full sm:rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 btn-anim"
               >
                 <img
-                  className="h-8 w-8 rounded-full bg-slate-800 ring-2 ring-indigo-500/50"
-                  src={user.user_metadata?.avatar_url || undefined}
-                  alt={user.user_metadata?.name || user.email}
+                  className="h-8 w-8 rounded-full bg-slate-800 ring-2 ring-indigo-500/50 object-cover"
+                  src={dbUser?.avatar || user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(dbUser?.name || user.email || 'User')}&background=6366f1&color=fff`}
+                  alt={dbUser?.name || user.email || ''}
                 />
-                <span className="hidden sm:block text-sm font-semibold text-slate-200">
-                  {user.user_metadata?.name || user.email}
-                </span>
+                <div className="hidden sm:flex flex-col items-start text-left">
+                  <span className="text-sm font-semibold text-slate-200 leading-tight">
+                    {dbUser?.name || user.user_metadata?.name || user.email?.split('@')[0]}
+                  </span>
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
+                    {role}
+                  </span>
+                </div>
               </button>
 
               {/* User Dropdown Menu */}
@@ -97,11 +102,44 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                   role="menu"
                 >
                   <div className="px-4 py-2.5 border-b border-slate-800">
-                    <p className="text-sm font-bold text-slate-100">{user.user_metadata?.name || user.email}</p>
+                    <p className="text-sm font-bold text-slate-100">{dbUser?.name || user.user_metadata?.name || user.email}</p>
                     <p className="text-xs text-slate-400 truncate">{user.email}</p>
                   </div>
 
                   <div className="py-1">
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-300 hover:bg-slate-800 transition-colors"
+                      >
+                        <ShieldAlert className="h-4 w-4 text-amber-400" />
+                        Admin Dashboard
+                      </Link>
+                    )}
+
+                    {isSeller && (
+                      <Link
+                        href="/seller"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-emerald-300 hover:bg-slate-800 transition-colors"
+                      >
+                        <BarChart3 className="h-4 w-4 text-emerald-400" />
+                        Seller Dashboard
+                      </Link>
+                    )}
+
+                    {isBuyer && (
+                      <Link
+                        href="/become-seller"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-indigo-300 hover:bg-slate-800 transition-colors"
+                      >
+                        <Sparkles className="h-4 w-4 text-indigo-400" />
+                        Become a Seller
+                      </Link>
+                    )}
+
                     <Link
                       href="/messages"
                       onClick={() => setIsDropdownOpen(false)}
@@ -110,6 +148,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                       <MessageSquare className="h-4 w-4 text-indigo-400" />
                       Messages & Chat
                     </Link>
+
                     <Link
                       href="/rentals"
                       onClick={() => setIsDropdownOpen(false)}
@@ -118,6 +157,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                       <Briefcase className="h-4 w-4 text-emerald-400" />
                       My Rentals
                     </Link>
+
                     <Link
                       href="/settings"
                       onClick={() => setIsDropdownOpen(false)}

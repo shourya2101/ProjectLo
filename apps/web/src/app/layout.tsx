@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { ExtensionErrorCatcher } from "@/components/common/ExtensionErrorCatcher";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.className} bg-[#090d16] text-slate-100 antialiased`} suppressHydrationWarning>
+        <ExtensionErrorCatcher />
         <AuthProvider>
           {children}
         </AuthProvider>
