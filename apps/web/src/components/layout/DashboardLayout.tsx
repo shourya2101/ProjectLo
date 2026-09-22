@@ -4,12 +4,34 @@ import { ReactNode, useState, useEffect, useRef } from "react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { AlertOctagon } from "lucide-react";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  
+  const { isSuspended } = useAuth();
+
+  if (isSuspended) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#090d16] p-4 text-slate-100">
+        <div className="max-w-md w-full space-y-6 bg-slate-900 p-8 rounded-3xl border border-red-500/30 text-center shadow-2xl">
+          <div className="inline-flex p-4 rounded-2xl bg-red-500/10 text-red-400 ring-1 ring-red-500/30">
+            <AlertOctagon className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-extrabold text-slate-100">Account Blocked</h1>
+            <p className="text-sm text-red-300 leading-relaxed">
+              Your access to the ProjectLo platform has been suspended by an administrator. You can no longer access marketplace features.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Close mobile menu on route change
   useEffect(() => {

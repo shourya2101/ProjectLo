@@ -651,9 +651,9 @@ export default function AdminDashboardPage() {
                             }`}
                           >
                             {isSuspended ? (
-                              <span className="flex items-center gap-1.5"><UserCheck className="w-3.5 h-3.5" /> Unsuspend Seller</span>
+                              <span className="flex items-center gap-1.5"><UserCheck className="w-3.5 h-3.5" /> Unblock Account</span>
                             ) : (
-                              <span className="flex items-center gap-1.5"><UserX className="w-3.5 h-3.5" /> Suspend Privileges</span>
+                              <span className="flex items-center gap-1.5"><UserX className="w-3.5 h-3.5" /> Block Account</span>
                             )}
                           </button>
                         </div>
@@ -718,7 +718,7 @@ export default function AdminDashboardPage() {
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-100">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-slate-100">
-                {suspendModal.isSuspended ? `Unsuspend ${suspendModal.name}` : `Suspend ${suspendModal.name}`}
+                {suspendModal.isSuspended ? `Unblock ${suspendModal.name}` : `Block ${suspendModal.name}`}
               </h3>
               <button onClick={() => setSuspendModal(null)} className="text-slate-400 hover:text-slate-200">
                 <X className="w-5 h-5" />
@@ -742,8 +742,8 @@ export default function AdminDashboardPage() {
 
             <p className="text-xs text-slate-400 leading-relaxed">
               {suspendModal.isSuspended
-                ? "This will restore the user's active selling privileges and allow them to create and manage listings."
-                : "This will deactivate the user's ability to create, edit, or list new projects without deleting their past account history."}
+                ? "This will restore the user's access to the marketplace and reinstate their active privileges."
+                : "This will completely lock the user out of the platform, blocking access to all marketplace features and APIs without deleting their past account history."}
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -765,7 +765,7 @@ export default function AdminDashboardPage() {
                     : "bg-red-600 hover:bg-red-500 shadow-red-600/30"
                 }`}
               >
-                {suspendModal.isSuspended ? "Confirm Unsuspension" : "Confirm Suspension"}
+                {suspendModal.isSuspended ? "Confirm Unblock" : "Confirm Block"}
               </button>
             </div>
           </div>

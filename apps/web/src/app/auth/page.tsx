@@ -11,7 +11,7 @@ type AuthMode = "signin" | "signup";
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signInWithPassword, signUp, signInWithGoogle, isAuthenticated } = useAuth();
+  const { signInWithPassword, signUp, signInWithGoogle, isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("signin");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,10 +32,14 @@ function AuthContent() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/");
+    if (!authLoading && isAuthenticated) {
+      if (isAdmin) {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isAdmin, authLoading, router]);
 
   if (isAuthenticated) {
     return null;
