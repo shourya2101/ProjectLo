@@ -11,7 +11,7 @@ type AuthMode = "signin" | "signup";
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signInWithPassword, signUp, signInWithGoogle, isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
+  const { signInWithPassword, signUp, signInWithGoogle, isAuthenticated, isAdmin, isSeller, isLoading: authLoading } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("signin");
   const [isLoading, setIsLoading] = useState(false);
@@ -35,11 +35,13 @@ function AuthContent() {
     if (!authLoading && isAuthenticated) {
       if (isAdmin) {
         router.push("/admin");
+      } else if (isSeller) {
+        router.push("/seller");
       } else {
         router.push("/");
       }
     }
-  }, [isAuthenticated, isAdmin, authLoading, router]);
+  }, [isAuthenticated, isAdmin, isSeller, authLoading, router]);
 
   if (isAuthenticated) {
     return null;
@@ -69,10 +71,9 @@ function AuthContent() {
       } else {
         await signUp(email, password, name);
       }
-      router.push("/");
+      // Redirection is now safely handled by AuthContext via onAuthStateChange
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication failed.");
-    } finally {
       setIsLoading(false);
     }
   };

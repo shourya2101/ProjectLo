@@ -44,8 +44,11 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     const authUserId = data.user.id;
     req.userId = authUserId;
 
-    const adminEmail = process.env.ADMIN_EMAIL || 'singhshourya434@gmail.com';
-    const isAdminEmail = data.user.email === adminEmail;
+    const adminEmail = (process.env.ADMIN_EMAIL || 'singhshourya434@gmail.com').toLowerCase().trim();
+    const userEmail = data.user.email?.toLowerCase().trim();
+    const isAdminEmail = userEmail === adminEmail;
+    
+    console.log(`[AUTH] Checking admin for email: ${userEmail} against ${adminEmail}. IsAdmin: ${isAdminEmail}`);
 
     // Auto-sync or find user in PostgreSQL
     let dbUser = await prisma.user.findUnique({ where: { id: authUserId } });

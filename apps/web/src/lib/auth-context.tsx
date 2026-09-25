@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -51,6 +52,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeApplication, setActiveApplication] = useState<ActiveApplication | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (token: string) => {
+  const fetchProfile = useCallback(async (token: string): Promise<DbUser | null> => {
     try {
       const res = await fetch("/api/auth/me", {
         headers: {
@@ -69,10 +71,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         setDbUser(data.user);
         setActiveApplication(data.latestApplication || null);
+        return data.user as DbUser;
       }
     } catch (err) {
       console.error("Failed to fetch database profile:", err);
     }
+    return null;
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -96,11 +100,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.access_token) {
-        await fetchProfile(session.access_token);
+        const userProfile = await fetchProfile(session.access_token);
+        
+        if (event === 'SIGNED_IN' && userProfile) {
+          if (userProfile.role === 'ADMIN') {
+            router.push('/admin');
+          } else if (userProfile.role === 'SELLER') {
+            router.push('/seller');
+          } else {
+            router.push('/');
+          }
+        }
       } else {
         setDbUser(null);
         setActiveApplication(null);
@@ -111,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, fetchProfile]);
+  }, [supabase, fetchProfile, router]);
 
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

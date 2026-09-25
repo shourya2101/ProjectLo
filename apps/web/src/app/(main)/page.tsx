@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ChevronRight, Star, MessageSquare, ShieldCheck, Sparkles } from "lucide-react";
+import { ChevronRight, Star, MessageSquare, ShieldCheck, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ChatModal } from "@/components/chat/ChatModal";
 import { useAuth } from "@/lib/auth-context";
 
 export default function Homepage() {
   const { isBuyer, isAuthenticated } = useAuth();
-  const [search, setSearch] = useState("");
   const [chatModalSeller, setChatModalSeller] = useState<{ name: string; title: string, productId?: string } | null>(null);
   
   const [categories, setCategories] = useState<{name: string, count: number}[]>([]);
@@ -41,13 +40,6 @@ export default function Homepage() {
       .catch(console.error);
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (search.trim()) {
-      window.location.href = `/products?search=${encodeURIComponent(search)}`;
-    }
-  };
-
   return (
     <div className="space-y-12 pb-12 text-slate-100">
       
@@ -64,25 +56,6 @@ export default function Homepage() {
           <p className="mt-4 text-lg text-slate-400">
             Buy senior design codebases, rent lab hardware, and exchange verified research directly with peers.
           </p>
-        </div>
-
-        <div className="max-w-2xl">
-          <form onSubmit={handleSearch} className="relative flex items-center">
-            <Search className="absolute left-4 h-5 w-5 text-slate-500" />
-            <input 
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Python, ROS2, ESP32, Jetson..."
-              className="w-full rounded-2xl border border-slate-800 bg-slate-900 py-4 pl-12 pr-28 text-slate-100 shadow-xl placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 sm:text-base outline-none transition-all"
-            />
-            <button 
-              type="submit"
-              className="absolute right-2.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-600/30 hover:bg-indigo-500 transition-all btn-anim active:scale-95"
-            >
-              Search
-            </button>
-          </form>
         </div>
       </section>
 
