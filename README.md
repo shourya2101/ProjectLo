@@ -2,7 +2,7 @@
 
 **ProjectLo** is a peer-to-peer college project & hardware marketplace designed for university students, researchers, and creators. It allows users to buy/sell digital codebases, rent lab hardware/dev kits, exchange academic research, and communicate directly through an integrated peer-to-peer chat system.
 
-🌍 **Live Website (Vercel):** [https://project-lo.vercel.app](https://project-lo.vercel.app) *(Update with your actual Vercel domain if different)*
+🌍 **Live Website (Vercel):** [https://project-loo.vercel.app/](https://project-loo.vercel.app/)
 
 ---
 
