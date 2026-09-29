@@ -97,11 +97,15 @@ export default function RentalsPage() {
               <div className="pt-2 flex items-center justify-between border-t border-slate-800">
                 <span className="text-sm font-bold text-slate-100">Total: {rental.totalPaid}</span>
                 <div className="flex items-center gap-2">
-                  <button className="px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors btn-anim active:scale-95">
-                    Extend Rental
-                  </button>
                   <Link 
-                    href={`/products/${rental.id}`}
+                    href="/messages"
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors btn-anim active:scale-95"
+                    title="Message owner to request extension"
+                  >
+                    Extend Rental
+                  </Link>
+                  <Link 
+                    href={`/products?search=${encodeURIComponent(rental.title)}`}
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-colors btn-anim active:scale-95 shadow-md shadow-indigo-600/30"
                   >
                     Details <ArrowUpRight className="h-3.5 w-3.5" />
