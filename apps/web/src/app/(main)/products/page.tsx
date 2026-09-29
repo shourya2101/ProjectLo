@@ -1,37 +1,58 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Filter, Plus, ChevronDown, MessageSquare, ShieldCheck } from "lucide-react";
+import { useState, useEffect, Suspense } from "react";
+import { Search, Filter, Plus, ChevronDown, MessageSquare, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ChatModal } from "@/components/chat/ChatModal";
 import { useAuth } from "@/lib/auth-context";
 
-export default function Marketplace() {
+function MarketplaceContent() {
   const { isSeller, isAdmin } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get("search") || "";
+  const urlCategory = searchParams.get("category") || "";
+
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [selectedCategory, setSelectedCategory] = useState(urlCategory);
   const [chatModalSeller, setChatModalSeller] = useState<{ name: string; title: string; productId: string } | null>(null);
   
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Sync state when URL params change (e.g. from topbar or homepage category links)
   useEffect(() => {
-    let query = "/api/products?";
-    if (searchTerm) {
-      query += `search=${encodeURIComponent(searchTerm)}`;
+    setSearchTerm(searchParams.get("search") || "");
+    setSelectedCategory(searchParams.get("category") || "");
+  }, [searchParams]);
+
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (searchTerm.trim()) {
+      params.set("search", searchTerm.trim());
     }
+    if (selectedCategory.trim()) {
+      params.set("category", selectedCategory.trim());
+    }
+
+    const query = params.toString() ? `/api/products?${params.toString()}` : "/api/products";
     fetch(query)
       .then(res => res.json())
       .then(data => {
         if (data && data.products) {
           setProducts(data.products);
+        } else {
+          setProducts([]);
         }
         setLoading(false);
       })
       .catch(err => {
-        console.error(err);
+        console.error("Failed to load products:", err);
+        setProducts([]);
         setLoading(false);
       });
-  }, [searchTerm]);
+  }, [searchTerm, selectedCategory]);
 
   return (
     <div className="space-y-8 text-slate-100 pb-12">
@@ -51,28 +72,46 @@ export default function Marketplace() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-slate-900 p-4 rounded-2xl shadow-xl border border-slate-800 flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="flex items-center gap-2 w-full md:w-96 px-3 py-2 bg-slate-950 rounded-xl border border-slate-800 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
-          <Search className="w-4 h-4 text-slate-500" />
-          <input 
-            type="text" 
-            placeholder="Search verified listings..." 
-            className="bg-transparent border-none outline-none text-sm text-slate-100 placeholder:text-slate-500 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="bg-slate-900 p-4 rounded-2xl shadow-xl border border-slate-800 space-y-3">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div className="flex items-center gap-2 w-full md:w-96 px-3 py-2 bg-slate-950 rounded-xl border border-slate-800 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
+            <Search className="w-4 h-4 text-slate-500" />
+            <input 
+              type="text" 
+              placeholder="Search verified listings..." 
+              className="bg-transparent border-none outline-none text-sm text-slate-100 placeholder:text-slate-500 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <button className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-xl transition-colors btn-anim active:scale-95">
+              <Filter className="w-4 h-4" />
+              Filters
+            </button>
+            <button className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-xl transition-colors btn-anim active:scale-95">
+              Sort by: Newest
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-xl transition-colors btn-anim active:scale-95">
-            <Filter className="w-4 h-4" />
-            Filters
-          </button>
-          <button className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-xl transition-colors btn-anim active:scale-95">
-            Sort by: Newest
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        </div>
+        {selectedCategory && (
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+            <span className="text-xs text-slate-400">Filtering by category:</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              {selectedCategory}
+              <button 
+                onClick={() => setSelectedCategory("")}
+                className="hover:text-white transition-colors"
+                title="Clear category filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Grid */}
@@ -159,5 +198,13 @@ export default function Marketplace() {
       )}
 
     </div>
+  );
+}
+
+export default function Marketplace() {
+  return (
+    <Suspense fallback={<div className="max-w-6xl mx-auto py-12 text-center text-slate-500">Loading marketplace...</div>}>
+      <MarketplaceContent />
+    </Suspense>
   );
 }
