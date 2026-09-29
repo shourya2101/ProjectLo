@@ -220,3 +220,7 @@ npx prisma studio
 4. **Clean Code & Dark UI Theme**:
    - Use Tailwind CSS v4 classes adhering to the Slate-900 / Indigo-600 dark aesthetic.
    - Maintain accessibility with responsive flex/grid layouts and accessible buttons.
+5. **Immediate Remote Git Commit & Push Policy (MANDATORY)**:
+   - **No Local-Only Commits:** After every single file change, bug fix, feature implementation, documentation update, or minor tweak, changes must be immediately staged, committed with a descriptive message, and pushed directly to the remote GitHub repository (`git add . ; git commit -m "..." ; git push`).
+   - Never leave uncommitted files or unpushed local commits after completing a task.
+   - Remote synchronicity must be maintained at all times so collaborators (e.g. `@ZeroTrace7`), team members, and Vercel automated deployments remain completely synchronized.

@@ -89,6 +89,15 @@ When modifying database models:
 
 ---
 
+### Workflow F: Immediate Git Commit & Push Policy (MANDATORY)
+1. After every completed file change, bug fix, feature, or refactor:
+   ```bash
+   git add . ; git commit -m "descriptive commit message" ; git push
+   ```
+2. Never leave uncommitted files or unpushed local commits after finishing a task. All changes must be live on GitHub remote immediately.
+
+---
+
 ## 3. Reference Documentation
 
 For detailed technical references, refer to the following documents:
