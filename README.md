@@ -97,6 +97,11 @@ npm run dev:web
 
 The frontend will be available at `http://localhost:3000` and the API at `http://localhost:4000`. API calls from the frontend to `/api/*` are automatically proxied to port 4000.
 
+## 👥 Contributors
+
+- **Shourya Pratap** ([@shourya2101](https://github.com/shourya2101))
+- **ZeroTrace7** ([@ZeroTrace7](https://github.com/ZeroTrace7))
+
 ## 📄 License
 
 This project is licensed under the MIT License.
