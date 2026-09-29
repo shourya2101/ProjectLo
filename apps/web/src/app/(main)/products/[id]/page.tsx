@@ -22,7 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const [selectedTab, setSelectedTab] = useState<"sale" | "rent">("sale");
   const [copied, setCopied] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -92,6 +92,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const isVerifiedSeller = product.seller?.role === "SELLER" || product.seller?.role === "ADMIN";
+  const isOwner = Boolean(user?.id && product?.sellerId && user.id === product.sellerId);
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 text-slate-100">
@@ -253,13 +254,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               </div>
 
-              <button
-                onClick={() => setIsChatOpen(true)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 font-semibold text-sm rounded-xl border border-slate-700 transition-colors btn-anim active:scale-95"
-              >
-                <MessageSquare className="h-4 w-4" />
-                Chat with Seller
-              </button>
+              {!isOwner && (
+                <button
+                  onClick={() => setIsChatOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 font-semibold text-sm rounded-xl border border-slate-700 transition-colors btn-anim active:scale-95"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Chat with Seller
+                </button>
+              )}
             </div>
           </div>
 
@@ -307,29 +310,41 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
             {/* Actions */}
             <div className="space-y-3">
-              <button 
-                className="w-full py-3 px-4 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition-all btn-anim active:scale-95 flex items-center justify-center gap-2"
-              >
-                {selectedTab === "sale" ? (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Purchase & Download Now
-                  </>
-                ) : (
-                  <>
-                    <Calendar className="h-4 w-4" />
-                    Select Rental Dates
-                  </>
-                )}
-              </button>
+              {isOwner ? (
+                <Link
+                  href="/my-listings"
+                  className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold text-sm border border-slate-700 shadow-md transition-all btn-anim flex items-center justify-center gap-2 text-center"
+                >
+                  Manage in My Listings
+                </Link>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setIsChatOpen(true)}
+                    className="w-full py-3 px-4 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition-all btn-anim active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {selectedTab === "sale" ? (
+                      <>
+                        <Download className="h-4 w-4" />
+                        Purchase &amp; Contact Seller
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="h-4 w-4" />
+                        Rent &amp; Contact Seller
+                      </>
+                    )}
+                  </button>
 
-              <button
-                onClick={() => setIsChatOpen(true)}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition-colors btn-anim active:scale-95 flex items-center justify-center gap-2"
-              >
-                <MessageSquare className="h-4 w-4 text-indigo-400" />
-                Ask Seller a Question
-              </button>
+                  <button
+                    onClick={() => setIsChatOpen(true)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition-colors btn-anim active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare className="h-4 w-4 text-indigo-400" />
+                    Ask Seller a Question
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Trust Badges */}
