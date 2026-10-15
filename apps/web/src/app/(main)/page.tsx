@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Star, MessageSquare, ShieldCheck, Sparkles } from "lucide-react";
+import { ChevronRight, Star, MessageSquare, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ChatModal } from "@/components/chat/ChatModal";
-import { useAuth } from "@/lib/auth-context";
 
 export default function Homepage() {
-  const { isBuyer, isAuthenticated } = useAuth();
   const [chatModalSeller, setChatModalSeller] = useState<{ name: string; title: string, productId?: string } | null>(null);
   
   const [categories, setCategories] = useState<{name: string, count: number}[]>([]);
@@ -58,27 +56,6 @@ export default function Homepage() {
           </p>
         </div>
       </section>
-
-      {/* Become a seller banner for buyers */}
-      {isBuyer && (
-        <section className="p-6 rounded-3xl bg-gradient-to-r from-indigo-950/60 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm font-bold text-indigo-300">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
-              <span>Have a capstone project or lab hardware to rent?</span>
-            </div>
-            <p className="text-xs text-slate-400">
-              Apply for ProjectLo Seller Verification to start listing your codebases and earning daily rental fees.
-            </p>
-          </div>
-          <Link
-            href="/become-seller"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all btn-anim whitespace-nowrap"
-          >
-            Become a Seller
-          </Link>
-        </section>
-      )}
 
       {/* Categories */}
       <section>
