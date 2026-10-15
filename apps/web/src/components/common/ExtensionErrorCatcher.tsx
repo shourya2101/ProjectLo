@@ -45,9 +45,21 @@ export function ExtensionErrorCatcher() {
 
     const origConsoleError = console.error;
     console.error = (...args: any[]) => {
-      const full = args.map(a => (typeof a === "object" && a !== null ? (a.stack || a.message || JSON.stringify(a)) : String(a))).join(" ");
-      if (isExtensionErrorString(full)) {
-        return;
+      try {
+        const full = args
+          .map((a) => {
+            if (typeof a === "object" && a !== null) {
+              return (a as any).stack || (a as any).message || String(a);
+            }
+            return String(a);
+          })
+          .join(" ");
+
+        if (isExtensionErrorString(full)) {
+          return;
+        }
+      } catch {
+        // Fallback safely if argument inspection throws
       }
       origConsoleError.apply(console, args);
     };

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
-import { User, Session } from "@supabase/supabase-js";
+import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 
 export type UserRole = "BUYER" | "SELLER" | "ADMIN";
 
@@ -54,7 +54,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [dbUser, setDbUser] = useState<DbUser | null>(null);
@@ -87,46 +87,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, fetchProfile]);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Fetch initial session
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.access_token) {
-        await fetchProfile(session.access_token);
+    supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
+      if (!isMounted) return;
+      const initialSession = data.session;
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      if (initialSession?.access_token) {
+        await fetchProfile(initialSession.access_token);
       }
-      setIsLoading(false);
-    };
-    
-    initializeAuth();
+      if (isMounted) setIsLoading(false);
+    });
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.access_token) {
-        const userProfile = await fetchProfile(session.access_token);
-        
-        if (event === 'SIGNED_IN' && userProfile) {
-          if (userProfile.role === 'ADMIN') {
-            router.push('/admin');
-          } else if (userProfile.role === 'SELLER') {
-            router.push('/seller');
-          } else {
-            router.push('/');
-          }
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, newSession: Session | null) => {
+      if (!isMounted) return;
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      if (newSession?.access_token) {
+        await fetchProfile(newSession.access_token);
       } else {
         setDbUser(null);
         setActiveApplication(null);
       }
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, fetchProfile, router]);
+  }, [supabase, fetchProfile]);
 
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
