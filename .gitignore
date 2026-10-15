@@ -31,3 +31,4 @@ migrations_backup/
 .vscode/
 .idea/
 .vercel
+.env*
