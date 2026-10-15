@@ -46,6 +46,7 @@ interface AuthContextType {
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithGoogleIdToken: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -153,6 +154,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw new Error(error.message);
   }, [supabase]);
 
+  const signInWithGoogleIdToken = useCallback(async (token: string) => {
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token,
+    });
+    if (error) throw new Error(error.message);
+  }, [supabase]);
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     setDbUser(null);
@@ -184,6 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithPassword,
         signUp,
         signInWithGoogle,
+        signInWithGoogleIdToken,
         signOut,
       }}
     >
