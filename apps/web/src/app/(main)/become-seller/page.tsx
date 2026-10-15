@@ -281,7 +281,7 @@ export default function BecomeSellerPage() {
               required
               type="text"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-              placeholder="e.g. Alex Miller"
+              placeholder="e.g. Your Full Name"
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
             />

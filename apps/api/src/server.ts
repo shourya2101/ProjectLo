@@ -9,6 +9,7 @@ import productRoutes from './routes/products.js';
 import authRoutes from './routes/auth.js';
 import sellerApplicationRoutes from './routes/sellerApplications.js';
 import adminRoutes from './routes/admin.js';
+import rentalRoutes from './routes/rentals.js';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/rentals', rentalRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

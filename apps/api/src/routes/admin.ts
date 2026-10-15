@@ -203,6 +203,8 @@ router.get('/products', async (req: AuthRequest, res) => {
     const where: any = {};
     if (status && Object.values(ProductStatus).includes(status)) {
       where.status = status;
+    } else {
+      where.status = { not: ProductStatus.DELETED };
     }
 
     const products = await prisma.product.findMany({

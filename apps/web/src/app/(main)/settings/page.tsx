@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const [saved, setSaved] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -36,7 +36,8 @@ export default function SettingsPage() {
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Full Name</label>
               <input 
                 type="text" 
-                defaultValue={user?.user_metadata?.name || "Alex Miller"}
+                defaultValue={dbUser?.name || user?.user_metadata?.name || user?.user_metadata?.full_name || ""}
+                placeholder="Your full name"
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
               />
             </div>
@@ -44,7 +45,8 @@ export default function SettingsPage() {
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">University / Institution</label>
               <input 
                 type="text" 
-                defaultValue={"Institute of Engineering & Tech"}
+                defaultValue={dbUser?.institution || ""}
+                placeholder="e.g. Stanford University / IIT Delhi"
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
               />
             </div>
@@ -52,7 +54,8 @@ export default function SettingsPage() {
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Department / Major</label>
               <input 
                 type="text" 
-                defaultValue={"Computer Science & Robotics"}
+                defaultValue={dbUser?.department || ""}
+                placeholder="e.g. Computer Science, Robotics"
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
               />
             </div>
@@ -61,7 +64,8 @@ export default function SettingsPage() {
               <input 
                 type="email" 
                 disabled
-                defaultValue={user?.email || "alex.m@student.edu"}
+                defaultValue={user?.email || ""}
+                placeholder="your.email@college.edu"
                 className="w-full rounded-xl border border-slate-800/60 bg-slate-950/60 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed outline-none"
               />
             </div>

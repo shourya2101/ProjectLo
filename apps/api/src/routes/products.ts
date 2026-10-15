@@ -324,14 +324,21 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Forbidden: You do not own this product' });
     }
 
-    // Check if there are related orders, rentals, or conversations
-    if (product.orders.length > 0 || product.rentals.length > 0 || product.conversations.length > 0) {
-      // Soft delete by updating status
+    // Check if there are related orders or rentals (financial records)
+    if (product.orders.length > 0 || product.rentals.length > 0) {
+      // Soft delete by updating status so order/rental receipts remain valid
       await prisma.product.update({
         where: { id },
         data: { status: ProductStatus.DELETED }
       });
-      return res.json({ message: 'Product archived due to existing relationships.' });
+      return res.json({ message: 'Product archived due to existing orders/rentals.' });
+    }
+
+    // Clean up related conversations if any
+    if (product.conversations.length > 0) {
+      await prisma.conversation.deleteMany({
+        where: { productId: id }
+      });
     }
 
     await prisma.product.delete({
