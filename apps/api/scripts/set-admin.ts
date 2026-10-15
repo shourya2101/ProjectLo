@@ -12,7 +12,7 @@ async function main() {
     console.log(`- ID: ${u.id} | Email: "${u.email}" | Name: "${u.name}" | Role: ${u.role}`);
   }
 
-  const targetEmail = 'singhshourya434@gmail.com';
+  const targetEmail = (process.argv[2] || 'singhshourya434@gmail.com').trim().toLowerCase();
   const found = await prisma.user.findFirst({
     where: {
       email: {

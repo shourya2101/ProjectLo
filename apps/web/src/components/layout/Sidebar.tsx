@@ -24,8 +24,7 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
 
   // Construct role-based navigation items
   const navItems = [
-    // Common item for non-admins or general discover
-    ...(isAdmin ? [] : [{ name: "Discover", href: "/", icon: LayoutDashboard }]),
+    { name: "Discover", href: "/", icon: LayoutDashboard },
     { name: "Marketplace", href: "/products", icon: ShoppingBag },
 
     // Admin exclusive section
@@ -33,16 +32,16 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
       { name: "Admin Dashboard", href: "/admin", icon: ShieldAlert },
     ] : []),
 
-    // Seller exclusive section
-    ...(isSeller ? [
-      { name: "Seller Dashboard", href: "/seller", icon: BarChart3 },
+    // Seller & Admin management tools
+    ...(isSeller || isAdmin ? [
+      ...(isSeller ? [{ name: "Seller Dashboard", href: "/seller", icon: BarChart3 }] : []),
       { name: "My Listings", href: "/my-listings", icon: Package },
       { name: "Add Listing", href: "/sell", icon: PlusCircle },
     ] : []),
 
     // Common messaging & rentals
     { name: "Messages", href: "/messages", icon: MessageSquare },
-    ...(!isAdmin ? [{ name: "My Rentals", href: "/rentals", icon: Briefcase }] : []),
+    { name: "My Rentals", href: "/rentals", icon: Briefcase },
 
     // Buyer exclusive: Become a Seller
     ...(isBuyer && isAuthenticated ? [

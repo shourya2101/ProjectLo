@@ -16,7 +16,8 @@ import {
   X,
   AlertTriangle,
   UserX,
-  UserCheck
+  UserCheck,
+  Trash2
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -207,6 +208,34 @@ export default function AdminDashboardPage() {
       } else {
         const err = await res.json();
         alert(err.error || "Approval failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Handle Product Deletion by Admin
+  const handleDeleteProduct = async (id: string, title: string) => {
+    if (!session) return;
+    if (!confirm(`Are you sure you want to permanently delete listing "${title}"? This will immediately remove it from the website.`)) {
+      return;
+    }
+    setActionLoadingId(id);
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+      if (res.ok) {
+        await fetchAdminData();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Deletion failed");
       }
     } catch (err) {
       console.error(err);
@@ -579,6 +608,16 @@ export default function AdminDashboardPage() {
                               </button>
                             </>
                           )}
+
+                          <button
+                            onClick={() => handleDeleteProduct(product.id, product.title)}
+                            disabled={isProcessing}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 text-xs font-semibold rounded-xl transition-all btn-anim disabled:opacity-50"
+                            title="Delete listing directly from database"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                          </button>
                         </div>
                       </div>
 

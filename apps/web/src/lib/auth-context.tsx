@@ -169,10 +169,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw new Error(error.message);
   }, [supabase]);
 
-  const role: UserRole = dbUser?.role || "BUYER";
-  const isBuyer = role === "BUYER";
+  const adminEmails = [
+    'singhshourya434@gmail.com',
+    ...(process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase().split(',').map((e) => e.trim()).filter(Boolean) || [])
+  ];
+
+  const isConfiguredAdmin = user?.email ? adminEmails.includes(user.email.toLowerCase()) : false;
+  const role: UserRole = dbUser?.role || (isConfiguredAdmin ? "ADMIN" : "BUYER");
+  const isBuyer = role === "BUYER" && !isConfiguredAdmin;
   const isSeller = role === "SELLER";
-  const isAdmin = role === "ADMIN";
+  const isAdmin = role === "ADMIN" || isConfiguredAdmin;
   const isSuspended = dbUser?.isSuspended || false;
 
   return (

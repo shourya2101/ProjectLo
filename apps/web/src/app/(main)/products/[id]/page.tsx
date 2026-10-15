@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, use, useEffect } from "react";
 import { 
   Star, 
@@ -15,17 +16,21 @@ import {
   Bookmark, 
   MessageSquare,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Loader2
 } from "lucide-react";
 import { ChatModal } from "@/components/chat/ChatModal";
 import { useAuth } from "@/lib/auth-context";
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const resolvedParams = use(params);
-  const { session, user } = useAuth();
+  const { session, user, isAdmin } = useAuth();
   const [selectedTab, setSelectedTab] = useState<"sale" | "rent">("sale");
   const [copied, setCopied] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +98,35 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const isVerifiedSeller = product.seller?.role === "SELLER" || product.seller?.role === "ADMIN";
   const isOwner = Boolean(user?.id && product?.sellerId && user.id === product.sellerId);
+  const canDelete = isOwner || isAdmin;
+
+  const handleDelete = async () => {
+    const confirmMessage = isAdmin && !isOwner
+      ? `Admin Action: Are you sure you want to permanently remove "${product.title}" from the website?`
+      : `Are you sure you want to delete "${product.title}"?`;
+      
+    if (!confirm(confirmMessage)) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+      if (res.ok) {
+        router.push("/products");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete product");
+        setIsDeleting(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error");
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 text-slate-100">
@@ -134,6 +168,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           Back to Marketplace
         </Link>
         <div className="flex items-center gap-2">
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 hover:text-red-300 transition-colors btn-anim active:scale-95 disabled:opacity-50"
+              title="Delete Listing"
+            >
+              {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              {isAdmin && !isOwner ? "Admin: Delete Listing" : "Delete Listing"}
+            </button>
+          )}
           <button 
             onClick={handleShare}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-300 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 transition-colors btn-anim active:scale-95"
@@ -311,12 +356,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             {/* Actions */}
             <div className="space-y-3">
               {isOwner ? (
-                <Link
-                  href="/my-listings"
-                  className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold text-sm border border-slate-700 shadow-md transition-all btn-anim flex items-center justify-center gap-2 text-center"
-                >
-                  Manage in My Listings
-                </Link>
+                <div className="space-y-2">
+                  <Link
+                    href="/my-listings"
+                    className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold text-sm border border-slate-700 shadow-md transition-all btn-anim flex items-center justify-center gap-2 text-center"
+                  >
+                    Manage in My Listings
+                  </Link>
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="w-full py-2.5 px-4 rounded-xl bg-red-600/10 hover:bg-red-600/20 text-red-400 font-semibold text-xs border border-red-500/30 transition-all btn-anim flex items-center justify-center gap-2 text-center disabled:opacity-50"
+                  >
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Delete My Listing
+                  </button>
+                </div>
               ) : (
                 <>
                   <button 
@@ -343,6 +398,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     <MessageSquare className="h-4 w-4 text-indigo-400" />
                     Ask Seller a Question
                   </button>
+
+                  {isAdmin && (
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="w-full py-2.5 px-4 rounded-xl bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white font-semibold text-xs border border-red-500/40 transition-all btn-anim flex items-center justify-center gap-2 text-center disabled:opacity-50 shadow-md"
+                    >
+                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      Admin: Delete Listing from Website
+                    </button>
+                  )}
                 </>
               )}
             </div>

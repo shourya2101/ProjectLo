@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { Search, Filter, Plus, ChevronDown, MessageSquare, ShieldCheck, X } from "lucide-react";
+import { Search, Filter, Plus, ChevronDown, MessageSquare, ShieldCheck, X, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChatModal } from "@/components/chat/ChatModal";
 import { useAuth } from "@/lib/auth-context";
 
 function MarketplaceContent() {
-  const { isSeller, isAdmin } = useAuth();
+  const { isSeller, isAdmin, session } = useAuth();
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get("search") || "";
   const urlCategory = searchParams.get("category") || "";
@@ -53,6 +53,29 @@ function MarketplaceContent() {
         setLoading(false);
       });
   }, [searchTerm, selectedCategory]);
+
+  const handleDeleteProduct = async (productId: string, productTitle: string) => {
+    if (!confirm(`Admin Action: Are you sure you want to permanently delete "${productTitle}"? This will immediately remove it from the website.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+      if (res.ok) {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete product");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error");
+    }
+  };
 
   return (
     <div className="space-y-8 text-slate-100 pb-12">
@@ -167,6 +190,15 @@ function MarketplaceContent() {
                   </div>
                   
                   <div className="flex items-center gap-2">
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDeleteProduct(product.id, product.title)}
+                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors btn-anim active:scale-95"
+                        title={`Admin: Delete "${product.title}"`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => setChatModalSeller({ name: product.seller.name, title: product.title, productId: product.id.toString() })}
                       className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors btn-anim active:scale-95"

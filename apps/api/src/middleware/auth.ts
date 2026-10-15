@@ -44,14 +44,29 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     const authUserId = data.user.id;
     req.userId = authUserId;
 
-    const adminEmail = (process.env.ADMIN_EMAIL || 'singhshourya434@gmail.com').toLowerCase().trim();
+    const envAdminEmails = (process.env.ADMIN_EMAIL || process.env.ADMIN_EMAILS || '')
+      .toLowerCase()
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+
+    // Guaranteed administrators list
+    const adminEmails = new Set([
+      'singhshourya434@gmail.com',
+      ...envAdminEmails,
+    ]);
+
     const userEmail = data.user.email?.toLowerCase().trim();
-    const isAdminEmail = userEmail === adminEmail;
+    const isAdminEmail = userEmail ? adminEmails.has(userEmail) : false;
     
-    console.log(`[AUTH] Checking admin for email: ${userEmail} against ${adminEmail}. IsAdmin: ${isAdminEmail}`);
+    console.log(`[AUTH] Checking admin for email: ${userEmail}. IsAdmin: ${isAdminEmail}`);
 
     // Auto-sync or find user in PostgreSQL
     let dbUser = await prisma.user.findUnique({ where: { id: authUserId } });
+    if (!dbUser && userEmail) {
+      dbUser = await prisma.user.findUnique({ where: { email: userEmail } });
+    }
+
     if (!dbUser) {
       const name = data.user.user_metadata?.name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User';
       const avatar = data.user.user_metadata?.avatar_url || null;
@@ -67,7 +82,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       });
     } else if (isAdminEmail && dbUser.role !== Role.ADMIN) {
       dbUser = await prisma.user.update({
-        where: { id: authUserId },
+        where: { id: dbUser.id },
         data: { role: Role.ADMIN }
       });
     }
