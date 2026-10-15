@@ -139,15 +139,15 @@ export default function Homepage() {
                   
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setChatModalSeller({ name: project.seller.name, title: project.title, productId: project.id })}
+                      onClick={() => setChatModalSeller({ name: project.seller?.name || "Verified Seller", title: project.title, productId: project.id })}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors btn-anim"
-                      title={`Chat with ${project.seller.name}`}
+                      title={`Chat with ${project.seller?.name || "Seller"}`}
                     >
                       <MessageSquare className="h-4 w-4" />
                     </button>
                     <div className="flex items-center gap-1 text-xs text-slate-400">
                       <Star className="h-3.5 w-3.5 text-amber-400 fill-current" />
-                      {project.seller.rating || 5.0}
+                      {project.seller?.rating || 5.0}
                     </div>
                   </div>
                 </div>

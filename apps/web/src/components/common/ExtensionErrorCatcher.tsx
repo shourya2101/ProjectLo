@@ -27,7 +27,6 @@ export function ExtensionErrorCatcher() {
 
       if (isExtensionErrorString(filename) || isExtensionErrorString(message) || isExtensionErrorString(stack)) {
         event.preventDefault();
-        event.stopImmediatePropagation();
         return true;
       }
     };
@@ -39,38 +38,15 @@ export function ExtensionErrorCatcher() {
 
       if (isExtensionErrorString(message) || isExtensionErrorString(stack)) {
         event.preventDefault();
-        event.stopImmediatePropagation();
       }
     };
 
-    const origConsoleError = console.error;
-    console.error = (...args: any[]) => {
-      try {
-        const full = args
-          .map((a) => {
-            if (typeof a === "object" && a !== null) {
-              return (a as any).stack || (a as any).message || String(a);
-            }
-            return String(a);
-          })
-          .join(" ");
-
-        if (isExtensionErrorString(full)) {
-          return;
-        }
-      } catch {
-        // Fallback safely if argument inspection throws
-      }
-      origConsoleError.apply(console, args);
-    };
-
-    window.addEventListener("error", handleGlobalError, true);
-    window.addEventListener("unhandledrejection", handleUnhandledRejection, true);
+    window.addEventListener("error", handleGlobalError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
     return () => {
-      console.error = origConsoleError;
-      window.removeEventListener("error", handleGlobalError, true);
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection, true);
+      window.removeEventListener("error", handleGlobalError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
     };
   }, []);
 

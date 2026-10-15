@@ -200,9 +200,9 @@ function MarketplaceContent() {
                       </button>
                     )}
                     <button
-                      onClick={() => setChatModalSeller({ name: product.seller.name, title: product.title, productId: product.id.toString() })}
+                      onClick={() => setChatModalSeller({ name: product.seller?.name || "Verified Seller", title: product.title, productId: product.id.toString() })}
                       className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors btn-anim active:scale-95"
-                      title={`Chat with ${product.seller.name}`}
+                      title={`Chat with ${product.seller?.name || "Seller"}`}
                     >
                       <MessageSquare className="h-4 w-4" />
                     </button>

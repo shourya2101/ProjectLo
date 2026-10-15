@@ -273,13 +273,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <img 
-                  src={product.seller.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.seller.name)}&background=6366f1&color=fff`} 
-                  alt={product.seller.name} 
+                  src={product.seller?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.seller?.name || 'Seller')}&background=6366f1&color=fff`} 
+                  alt={product.seller?.name || 'Seller'} 
                   className="h-12 w-12 rounded-full ring-2 ring-indigo-500/50 object-cover"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-100 text-base">{product.seller.name}</h3>
+                    <h3 className="font-bold text-slate-100 text-base">{product.seller?.name || 'Verified Seller'}</h3>
                     {isVerifiedSeller && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                         <ShieldCheck className="w-3 h-3" />
@@ -287,14 +287,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-400">{product.seller.institution || product.seller.department || 'Verified Student'}</p>
+                  <p className="text-xs text-slate-400">{product.seller?.institution || product.seller?.department || 'Verified Student'}</p>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
                     <span className="flex items-center gap-1 font-semibold text-slate-200">
                       <Star className="h-3.5 w-3.5 text-amber-400 fill-current" />
-                      {product.seller.rating || 5.0} rating
+                      {product.seller?.rating || 5.0} rating
                     </span>
                     <span>•</span>
-                    <span>{product.seller.completedDeals || 0} deals completed</span>
+                    <span>{product.seller?.completedDeals || 0} deals completed</span>
                   </div>
                 </div>
               </div>
@@ -438,8 +438,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       <ChatModal
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
-        sellerName={product.seller.name}
-        sellerAvatar={product.seller.avatar}
+        sellerName={product.seller?.name || "Verified Seller"}
+        sellerAvatar={product.seller?.avatar}
         projectTitle={product.title}
         productId={product.id}
       />

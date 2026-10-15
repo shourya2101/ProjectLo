@@ -70,16 +70,28 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     if (!dbUser) {
       const name = data.user.user_metadata?.name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User';
       const avatar = data.user.user_metadata?.avatar_url || null;
-      dbUser = await prisma.user.create({
-        data: {
-          id: authUserId,
-          email: data.user.email || '',
-          name,
-          avatar,
-          role: isAdminEmail ? Role.ADMIN : Role.BUYER,
-          isSuspended: false
-        }
-      });
+      try {
+        dbUser = await prisma.user.upsert({
+          where: { id: authUserId },
+          update: {
+            ...(isAdminEmail ? { role: Role.ADMIN } : {})
+          },
+          create: {
+            id: authUserId,
+            email: data.user.email || '',
+            name,
+            avatar,
+            role: isAdminEmail ? Role.ADMIN : Role.BUYER,
+            isSuspended: false
+          }
+        });
+      } catch (createErr) {
+        // Fallback in case of concurrent creation race condition
+        dbUser = await prisma.user.findFirst({
+          where: { OR: [{ id: authUserId }, ...(userEmail ? [{ email: userEmail }] : [])] }
+        });
+        if (!dbUser) throw createErr;
+      }
     } else if (isAdminEmail && dbUser.role !== Role.ADMIN) {
       dbUser = await prisma.user.update({
         where: { id: dbUser.id },

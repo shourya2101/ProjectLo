@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
@@ -60,8 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [dbUser, setDbUser] = useState<DbUser | null>(null);
   const [activeApplication, setActiveApplication] = useState<ActiveApplication | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const fetchingTokenRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (token: string): Promise<DbUser | null> => {
+    if (!token) return null;
+    if (fetchingTokenRef.current === token) return null;
+    fetchingTokenRef.current = token;
+
     try {
       const res = await fetch("/api/auth/me", {
         headers: {
@@ -76,6 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error("Failed to fetch database profile:", err);
+    } finally {
+      fetchingTokenRef.current = null;
     }
     return null;
   }, []);
@@ -89,19 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch initial session
-    supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
-      if (!isMounted) return;
-      const initialSession = data.session;
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-      if (initialSession?.access_token) {
-        await fetchProfile(initialSession.access_token);
-      }
-      if (isMounted) setIsLoading(false);
-    });
-
-    // Listen for auth state changes
+    // Listen for auth state changes (Supabase automatically emits INITIAL_SESSION on setup)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, newSession: Session | null) => {
       if (!isMounted) return;
       setSession(newSession);
